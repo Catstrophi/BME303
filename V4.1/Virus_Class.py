@@ -1,32 +1,32 @@
 """
-Creates the enemy class. Takes in health, damage, attack range, and position
-Like tower we create the enemy shape and adds the hp.
+Creates the virus class. Takes in health, damage, attack range, and position
+Like Immune_cell we create the virus shape and adds the hp.
 
 Then we create two functions the take damage and act
 
-The first function take damage just updates the hp based on damage done like the tower.
+The first function take damage just updates the hp based on damage done like the Immune_cell.
 
-The act function is different. It first defines how the enemy attack then defines how it moves.
-    We have this together because we dont want the enemy to attack and move at the same time. Furthermore, I also created a pathfind
+The act function is different. It first defines how the virus attack then defines how it moves.
+    We have this together because we dont want the virus to attack and move at the same time. Furthermore, I also created a pathfind
     algorithm so its easier to have these together.
 
-        I want the enemy to pathfind to the center of the grid which is the center of the fracture.
-        However, if there is a tower within x range, it goes to the tower instead.
+        I want the virus to pathfind to the center of the grid which is the center of the fracture.
+        However, if there is a Immune_cell within x range, it goes to the Immune_cell instead.
 
 act function:
-    Takes as list of all the towers and checks if there is a tower nearby.
-        If tower in its detection/attack range:
-            It will attack the tower
-        If there is not a tower in that range:
+    Takes as list of all the Immune_cells and checks if there is a Immune_cell nearby.
+        If Immune_cell in its detection/attack range:
+            It will attack the Immune_cell
+        If there is not a Immune_cell in that range:
             It will follow the flow field.
 
-Then we want to place this enemy. I want them to spawn randomly around the edge of the grid. So I randomly chose top, bottom,
-        right, or left and place the enemy there.
+Then we want to place this virus. I want them to spawn randomly around the edge of the grid. So I randomly chose top, bottom,
+        right, or left and place the virus there.
 """
 
 import random
 
-class Enemy:
+class virus:
     def __init__(self, window, health, damage, detect_range, cell_x, cell_y, cell_size):
         self.window = window
         self.cell_x = cell_x
@@ -40,7 +40,7 @@ class Enemy:
 
         offset = self.cell_size
 
-        # Create the enemy shape
+        # Create the virus shape
         self.shape = window.create_rectangle(self.pixel_x - offset, self.pixel_y - offset,
                                              self.pixel_x + offset, self.pixel_y + offset, fill="red", outline="")
 
@@ -53,7 +53,7 @@ class Enemy:
         # Decrease health
         self.health -= amount
 
-        # If hp = 0, remove enemy
+        # If hp = 0, remove virus
         if self.health <= 0:
             self.window.delete(self.shape)
             self.window.delete(self.hp)
@@ -62,17 +62,17 @@ class Enemy:
         else:
             self.window.itemconfig(self.hp, text=str(self.health))
 
-    def act(self, towers, flow_field):
-        # If not health stop, same thing with towers, tick update is not good, creates "ghost enemy"
+    def act(self, Immune_cells, flow_field):
+        # If not health stop, same thing with Immune_cells, tick update is not good, creates "ghost virus"
         if self.health <= 0:
             return
 
-        # Checks if there is any nearby towers
-        nearby_towers = []
+        # Checks if there is any nearby Immune_cells
+        nearby_Immune_cells = []
 
-        for tower in towers:
-            dist_x = abs(self.cell_x - tower.cell_x)
-            dist_y = abs(self.cell_y - tower.cell_y)
+        for Immune_cell in Immune_cells:
+            dist_x = abs(self.cell_x - Immune_cell.cell_x)
+            dist_y = abs(self.cell_y - Immune_cell.cell_y)
 
             # Uses the same Chebyshev Distance
             if dist_x > dist_y:
@@ -81,18 +81,18 @@ class Enemy:
                 current_dist = dist_y
 
             if current_dist <= self.detect_range:
-                nearby_towers.append(tower)
+                nearby_Immune_cells.append(Immune_cell)
 
-        # Goes through all the nearby towers we found
-        if len(nearby_towers) > 0:
+        # Goes through all the nearby Immune_cells we found
+        if len(nearby_Immune_cells) > 0:
             target = None
 
             shortest_dist = 999  # Start with a very large number, this is reference for flow map
 
-            for tower in nearby_towers:
+            for Immune_cell in nearby_Immune_cells:
 
-                dist_x = abs(self.cell_x - tower.cell_x)
-                dist_y = abs(self.cell_y - tower.cell_y)
+                dist_x = abs(self.cell_x - Immune_cell.cell_x)
+                dist_y = abs(self.cell_y - Immune_cell.cell_y)
 
                 if dist_x > dist_y:
                     d = dist_x
@@ -101,7 +101,7 @@ class Enemy:
 
                 if d < shortest_dist:
                     shortest_dist = d
-                    target = tower
+                    target = Immune_cell
 
             # Apply damage and draw attack
             target.take_damage(self.damage)
@@ -110,7 +110,7 @@ class Enemy:
             self.window.after(100, lambda: self.window.delete(laser))
             return  # Stop because we don't want to move when we attack
 
-        # If there are no towers nearby we move
+        # If there are no Immune_cells nearby we move
 
         # Sets basic conditions for the flow field
         best_dist = 999999
@@ -170,11 +170,11 @@ class Enemy:
             self.window.coords(self.hp, self.pixel_x, self.pixel_y)
 
 """
-# Spawn enemy
-def spawn_enemies(window, health, damage, detect_range, grid_size, count, cell_size):
+# Spawn virus
+def spawn_viruses(window, health, damage, detect_range, grid_size, count, cell_size):
 
-    # Returns all enemies created
-    enemies = []
+    # Returns all viruses created
+    viruses = []
 
     # Randomly spawn at the 4 edges of the grid, offset a little since it's a 2x2
     for i in range(count):
@@ -196,11 +196,11 @@ def spawn_enemies(window, health, damage, detect_range, grid_size, count, cell_s
             cell_x = grid_size - 2
             cell_y = random.randint(1, grid_size - 2)
 
-        enemies.append(Enemy(window, health, damage, detect_range, cell_x, cell_y, cell_size))
+        viruses.append(virus(window, health, damage, detect_range, cell_x, cell_y, cell_size))
 
-    return enemies
+    return viruses
 """
-def spawn_single_enemy(window, health, damage, detect_range, grid_size, cell_size, random_index):
+def spawn_single_virus(window, health, damage, detect_range, grid_size, cell_size, random_index):
     # Randomly spawn at the 4 edges of the grid
     edge = random.choice(['top', 'bottom', 'left', 'right'])
 
@@ -217,4 +217,4 @@ def spawn_single_enemy(window, health, damage, detect_range, grid_size, cell_siz
         cell_x = grid_size - 2
         cell_y = random_index.randint(1, grid_size - 2)
 
-    return Enemy(window, health, damage, detect_range, cell_x, cell_y, cell_size)
+    return virus(window, health, damage, detect_range, cell_x, cell_y, cell_size)

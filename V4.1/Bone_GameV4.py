@@ -1,20 +1,21 @@
 # Import all the needed libraries
 import tkinter as tk
 import random
-from Tower_Class import Tower, add_towers
-from Enemy_Class import Enemy, spawn_single_enemy
+from Immune_Cell_Class import Immune_cell, add_Immune_cells
+from Virus_Class import virus, spawn_single_virus
 from Draw_Bone import draw_bone
 from Fix_Bone import fix_bone
 from Flow_Field import create_flow_field
-from Vaccine_Class import Vaccine
+from Antiviral_Class import Antiviral
 from Game_Variables import *
+from PIL import ImageGrab
 
 
 class Bone_Game:
     # Added on_finish parameter
-    def __init__(self, main_window, enable_vaccine=True, rindex_code=0, is_finished=None):
+    def __init__(self, main_window, enable_Antiviral=True, rindex_code=0, is_finished=None):
         self.main_window = main_window
-        self.enable_vaccine = enable_vaccine
+        self.enable_Antiviral = enable_Antiviral
         self.game_finished = is_finished
 
         self.window_size = GRID_SIZE * CELL_SIZE
@@ -25,27 +26,33 @@ class Bone_Game:
 
         self.walls, self.left_edge, self.right_edge = draw_bone(self.window, GRID_SIZE, CELL_SIZE, FRACTURE_GAP,
                                                                 self.random_index)
-        self.towers = add_towers(self.window, TOWER_HP, TOWER_DMG, TOWER_RANGE, TOTAL_TOWERS, CELL_SIZE)
+        self.Immune_cells = add_Immune_cells(self.window, Immune_cell_HP, Immune_cell_DMG, Immune_cell_RANGE, TOTAL_Immune_cellS, CELL_SIZE)
         self.flow_field = create_flow_field(self.walls, GRID_SIZE)
 
-        self.enemies = []
+        self.viruses = []
         self.heal_timer = 0
         self.current_heal_speed = HEAL_SPEED
-        self.vaccine = Vaccine(self.window)
+        self.Antiviral = Antiviral(self.window)
 
         self.total_ticks = 0
         self.current_spawn_amount = BASE_SPAWN_AMOUNT
         self.spawn_accumulator = 0.0
-        self.total_enemy_defeated = 0
+        self.total_virus_defeated = 0
         self.is_finished = False
 
         self.wave_info = self.window.create_text((GRID_SIZE * CELL_SIZE) // 2, 20, text="", fill="black",
                                                  font=("Arial", 14, "bold"))
         # Data tracking variables
         self.history_time = []
-        self.history_enemies = []
+        self.history_viruses = []
         self.history_healing = []
         self.history_heal_speed = []
+
+        # GIF recording
+        self.frames = []
+        self.recording = True
+        self.gif_filename = "simulation.gif"
+        self.gif_fps = 20
 
         total_gap = 0
         for y in self.right_edge:
@@ -53,59 +60,83 @@ class Bone_Game:
 
         self.initial_gap = total_gap
 
-    def enemy_spawn(self):
+    def capture_frame(self):
+        if not self.recording:
+            return
+
+        root = self.main_window.winfo_toplevel()
+        root.update_idletasks()
+        root.update()
+        frame = ImageGrab.grab(window=root.winfo_id())
+        self.frames.append(frame)
+
+    def save_gif(self):
+        """Save all captured frames as an animated GIF."""
+        if not self.frames:
+            return
+        duration_ms = int(2000 / self.gif_fps)
+
+        self.frames[0].save(
+            self.gif_filename,
+            save_all=True,
+            append_images=self.frames[1:],
+            loop=0,  # 0 = loop forever
+            duration=duration_ms,
+        )
+
+    def virus_spawn(self):
         spawn_rate = self.current_spawn_amount / TICKS_PER_CYCLE
         self.spawn_accumulator += spawn_rate
 
         while self.spawn_accumulator >= 1.0:
-            new_enemy = spawn_single_enemy(self.window, ENEMY_HP, ENEMY_DMG, ENEMY_RANGE, GRID_SIZE, CELL_SIZE,
+            new_virus = spawn_single_virus(self.window, virus_HP, virus_DMG, virus_RANGE, GRID_SIZE, CELL_SIZE,
                                            self.random_index)
-            self.enemies.append(new_enemy)
+            self.viruses.append(new_virus)
             self.spawn_accumulator -= 1.0
 
     def remove_destroyed(self):
         is_destroyed = False
-        surviving_towers = []
-        for current_tower in self.towers:
-            if current_tower.health > 0:
-                surviving_towers.append(current_tower)
+        surviving_Immune_cells = []
+        for current_Immune_cell in self.Immune_cells:
+            if current_Immune_cell.health > 0:
+                surviving_Immune_cells.append(current_Immune_cell)
             else:
                 is_destroyed = True
 
-        if is_destroyed == True and len(surviving_towers) > 0:
+        if is_destroyed == True and len(surviving_Immune_cells) > 0:
             all_health = []
-            for tower in surviving_towers:
-                all_health.append(tower.health)
-                self.window.delete(tower.shape)
-                self.window.delete(tower.hp)
-            self.towers = add_towers(self.window, TOWER_HP, TOWER_DMG, TOWER_RANGE, len(all_health), CELL_SIZE,
+            for Immune_cell in surviving_Immune_cells:
+                all_health.append(Immune_cell.health)
+                self.window.delete(Immune_cell.shape)
+                self.window.delete(Immune_cell.hp)
+            self.Immune_cells = add_Immune_cells(self.window, Immune_cell_HP, Immune_cell_DMG, Immune_cell_RANGE, len(all_health), CELL_SIZE,
                                      health_list=all_health)
         else:
-            self.towers = surviving_towers
+            self.Immune_cells = surviving_Immune_cells
 
-        surviving_enemies = []
-        for current_enemy in self.enemies:
-            if current_enemy.health > 0:
-                surviving_enemies.append(current_enemy)
+        surviving_viruses = []
+        for current_virus in self.viruses:
+            if current_virus.health > 0:
+                surviving_viruses.append(current_virus)
             else:
-                self.total_enemy_defeated += 1
-        self.enemies = surviving_enemies
+                self.total_virus_defeated += 1
+        self.viruses = surviving_viruses
 
     def actions(self):
-        for current_tower in self.towers:
-            current_tower.attack(self.enemies)
-        for current_enemy in self.enemies:
-            current_enemy.act(self.towers, self.flow_field)
+        for current_Immune_cell in self.Immune_cells:
+            current_Immune_cell.attack(self.viruses)
+        for current_virus in self.viruses:
+            current_virus.act(self.Immune_cells, self.flow_field)
 
     def bone_healing(self):
-        enemies_in_radius = 0
-        for current_enemy in self.enemies:
-            enemy_distance = self.flow_field.get((current_enemy.cell_x, current_enemy.cell_y), 999)
-            if enemy_distance <= INFECTION_RADIUS:
-                enemies_in_radius += 1
+        viruses_in_radius = 0
+        for current_virus in self.viruses:
+            virus_distance = self.flow_field.get((current_virus.cell_x, current_virus.cell_y), 999)
+            if virus_distance <= INFECTION_RADIUS:
+                viruses_in_radius += 1
 
         self.current_heal_speed = HEAL_SPEED
-        if enemies_in_radius >= INFECTION_ENEMY:
+        if viruses_in_radius >= INFECTION_virus:
             self.current_heal_speed += INFECTION_PENALTY
 
         self.heal_timer += UPDATE_SPEED
@@ -124,19 +155,25 @@ class Bone_Game:
         if left_edge_set == {center_x} and right_edge_set == {center_x}:
             self.window.delete("all")
             self.window.configure(bg="green")
-            win_text = f"BONE HEALED \n Stats: Towers: {TOTAL_TOWERS} \n Total Enemies: {self.total_enemy_defeated}"
+            win_text = f"BONE HEALED \n Stats: Immune_cells: {TOTAL_Immune_cellS} \n Total viruses: {self.total_virus_defeated}"
             self.window.create_text((GRID_SIZE * CELL_SIZE) // 2, (GRID_SIZE * CELL_SIZE) // 2, text=win_text,
                                     fill="white", font=("Arial", 24, "bold"))
+            self.capture_frame()
+            self.recording = False
+            self.save_gif()
             return True
 
-        for current_enemy in self.enemies:
-            enemy_distance = self.flow_field.get((current_enemy.cell_x, current_enemy.cell_y))
-            if enemy_distance == 0:
+        for current_virus in self.viruses:
+            virus_distance = self.flow_field.get((current_virus.cell_x, current_virus.cell_y))
+            if virus_distance == 0:
                 self.window.delete("all")
                 self.window.configure(bg="red")
-                lose_text = f"INFECTED \n Stats: Towers: {TOTAL_TOWERS} \n Total Enemies: {self.total_enemy_defeated}"
+                lose_text = f"INFECTED \n Stats: Immune_cells: {TOTAL_Immune_cellS} \n Total viruses: {self.total_virus_defeated}"
                 self.window.create_text((GRID_SIZE * CELL_SIZE) // 2, (GRID_SIZE * CELL_SIZE) // 2, text=lose_text,
                                         fill="black", font=("Arial", 20, "bold"))
+                self.capture_frame()  # capture final frame
+                self.recording = False
+                self.save_gif()
                 return True
 
         return False
@@ -144,18 +181,18 @@ class Bone_Game:
     def update_ui(self):
         wave_num = (self.total_ticks // TICKS_PER_CYCLE) + 1
 
-        if self.enable_vaccine:
-            vaccine_text = f"Vaccine Amount: {self.vaccine.num_vaccine}"
+        if self.enable_Antiviral:
+            Antiviral_text = f"Antiviral Cycles: {self.Antiviral.num_Antiviral}"
         else:
-            vaccine_text = "VACCINE DISABLED"
+            Antiviral_text = "No Antivirals"
 
-        display_text = f"Wave: {wave_num} | Spawn Rate: {self.current_spawn_amount} | Active Enemies: {len(self.enemies)} | {vaccine_text}"
+        display_text = f"Wave: {wave_num} | Spawn Rate: {self.current_spawn_amount} | Active viruses: {len(self.viruses)} | {Antiviral_text}"
         self.window.itemconfig(self.wave_info, text=display_text)
         self.window.tag_raise(self.wave_info)
 
     def record_data(self):
         self.history_time.append(self.total_ticks)
-        self.history_enemies.append(len(self.enemies))
+        self.history_viruses.append(len(self.viruses))
 
         current_gap = 0
         for y in self.right_edge:
@@ -174,10 +211,10 @@ class Bone_Game:
         if self.total_ticks % TICKS_PER_CYCLE == 0:
             self.current_spawn_amount = self.current_spawn_amount + self.current_spawn_amount * SPAWN_INCREASE_AMOUNT
 
-        if self.enable_vaccine:
-            self.current_spawn_amount = self.vaccine.apply(self.total_ticks, self.current_spawn_amount)
+        if self.enable_Antiviral:
+            self.current_spawn_amount = self.Antiviral.apply(self.total_ticks, self.current_spawn_amount)
 
-        self.enemy_spawn()
+        self.virus_spawn()
         self.remove_destroyed()
         self.actions()
         self.bone_healing()
@@ -193,6 +230,7 @@ class Bone_Game:
         self.update_ui()
 
         # The game drives its own clock again!
+        self.capture_frame()
         self.main_window.after(UPDATE_SPEED, self.game_loop)
 
     def start_game(self):

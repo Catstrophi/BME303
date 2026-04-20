@@ -18,7 +18,7 @@ create_flow_field:
             - Checks the four adjacent neighbors (Up, Down, Left, Right) of the current cell.
 
             - For each neighbor, it performs a 3x3 clearance check. If any cell within that 3x3 radius contains a wall,
-                    the neighbor is marked to ensure a 2x2 enemy never collides with it.
+                    the neighbor is marked to ensure a 2x2 virus never collides with it.
 
                         - If a neighbor is not a wall and hasn't been checked,
                             it is assigned a value of current_distance + 1 and added to the list to continue the flow.
@@ -43,7 +43,7 @@ def create_flow_field(walls, grid_size):
 
     # Gives condition that if its a wall, you cant go there
     def is_cell_safe(check_x, check_y):
-        # of the enemy will ever touch a black wall.
+        # of the virus will ever touch a black wall.
         if 48 <= check_x <= 51 and 48 <= check_y <= 51:
             return True
 
